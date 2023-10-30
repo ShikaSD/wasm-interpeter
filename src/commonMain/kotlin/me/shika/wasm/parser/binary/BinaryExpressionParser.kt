@@ -1,20 +1,24 @@
-package me.shika.wasm.parser.binary.internal
+package me.shika.wasm.parser.binary
 
-import me.shika.wasm.WasmArrayType
-import me.shika.wasm.WasmCompositeType
-import me.shika.wasm.WasmExpr
-import me.shika.wasm.WasmFieldType
-import me.shika.wasm.WasmFuncType
-import me.shika.wasm.WasmRecursiveType
-import me.shika.wasm.WasmStructType
-import me.shika.wasm.WasmSubType
-import me.shika.wasm.WasmValueType
-import me.shika.wasm.parser.binary.BinaryParserState
+import me.shika.wasm.def.WasmArrayType
+import me.shika.wasm.def.WasmCompositeType
+import me.shika.wasm.def.WasmExpr
+import me.shika.wasm.def.WasmFieldType
+import me.shika.wasm.def.WasmFuncType
+import me.shika.wasm.def.WasmModuleDef
+import me.shika.wasm.def.WasmStructType
+import me.shika.wasm.def.WasmType
+import me.shika.wasm.def.WasmValueType
+import me.shika.wasm.parser.binary.internal.ByteBuffer
 import me.shika.wasm.parser.binary.internal.debug.asWasmText
+import me.shika.wasm.parser.binary.internal.readByteAsInt
+import me.shika.wasm.parser.binary.internal.readS32
+import me.shika.wasm.parser.binary.internal.readS64
+import me.shika.wasm.parser.binary.internal.readU32
 
 @OptIn(ExperimentalStdlibApi::class)
 internal class BinaryExpressionParser(
-    private val state: BinaryParserState
+    private val state: WasmModuleDef
 ) {
     private var code = IntArray(16)
     private var nextPosition = 0
@@ -290,29 +294,25 @@ internal class BinaryExpressionParser(
         )
     }
 
-    fun ByteBuffer.parseType(): WasmRecursiveType =
+    fun ByteBuffer.parseType(): Array<WasmType> =
         when (val byte = readByteAsInt()) {
-            0x4E -> WasmRecursiveType(
-                Array(readU32()) { parseSubtype(readByteAsInt()) }
-            )
-            else -> WasmRecursiveType(
-                arrayOf(parseSubtype(byte))
-            )
+            0x4E -> Array(readU32()) { parseSubtype(readByteAsInt()) }
+            else -> arrayOf(parseSubtype(byte))
         }
 
-    private fun ByteBuffer.parseSubtype(byte: Int): WasmSubType =
+    private fun ByteBuffer.parseSubtype(byte: Int): WasmType =
         when (byte) {
             0x50 -> {
                 val idx = IntArray(readU32()) { parseIdx() }
                 val compType = parseCompType(readByteAsInt())
-                WasmSubType(compType, idx, final = false)
+                WasmType(compType, idx, final = false)
             }
             0x4F -> {
                 val idx = IntArray(readU32()) { parseIdx() }
                 val compType = parseCompType(readByteAsInt())
-                WasmSubType(compType, idx, final = true)
+                WasmType(compType, idx, final = true)
             }
-            else -> WasmSubType(parseCompType(byte), intArrayOf(), final = true)
+            else -> WasmType(parseCompType(byte), EmptyIntArray, final = true)
         }
 
     private fun ByteBuffer.parseCompType(byte: Int): WasmCompositeType =
@@ -645,5 +645,7 @@ internal class BinaryExpressionParser(
         internal const val f64_min = 0xA4
         internal const val f64_max = 0xA5
         internal const val f64_copysign = 0xA6
+
+        private val EmptyIntArray = IntArray(0)
     }
 }

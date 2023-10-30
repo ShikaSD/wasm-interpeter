@@ -1,21 +1,28 @@
-package me.shika.wasm
+package me.shika.wasm.def
 
-class WasmModule {
-
+class WasmModuleDef {
+    var types: Array<WasmType>? = null
+    var imports: Array<WasmImport>? = null
+    var funcTypeIdx: IntArray? = null
+    var tables: Array<WasmTableDef>? = null
+    var memory: Array<WasmMemoryDef>? = null
+    var globals: Array<WasmGlobalDef>? = null
+    var exports: Array<WasmExport>? = null
+    var startFuncIdx: Int? = null
+    var elements: Array<WasmElementDef>? = null
+    var dataCount: Int? = null
+    var code: Array<WasmFuncBody>? = null
+    var data: Array<WasmModuleData>? = null
+    var tags: IntArray? = null
 }
 
-sealed interface WasmType
-class WasmRecursiveType(
-    val subtypes: Array<WasmSubType>
-) : WasmType
-
-class WasmSubType(
+class WasmType(
     val compType: WasmCompositeType,
     val types: IntArray,
     val final: Boolean
-) : WasmType
+)
 
-sealed interface WasmCompositeType : WasmType
+sealed interface WasmCompositeType
 class WasmArrayType(val type: WasmFieldType) : WasmCompositeType
 class WasmStructType(val fields: Array<WasmFieldType>) : WasmCompositeType
 
@@ -81,15 +88,15 @@ class WasmTagIdx(val typeIdx: Int) : WasmImportDesc, WasmExportDesc
 class WasmTableIdx(val typeIdx: Int) : WasmExportDesc
 class WasmMemIdx(val typeIdx: Int) : WasmExportDesc
 class WasmGlobalIdx(val typeIdx: Int) : WasmExportDesc
-class WasmTableType(val refType: Int, limits: WasmLimits) : WasmImportDesc
-class WasmMemType(val limits: WasmLimits) : WasmImportDesc
-class WasmFieldType(val type: Int, val mut: Boolean) : WasmImportDesc
+class WasmTableDef(val refType: Int, val initSize: Int, val maxSize: Int, val initExpr: WasmExpr?) : WasmImportDesc
+class WasmMemoryDef(val initSize: Int, val maxSize: Int) : WasmImportDesc
+class WasmFieldType(val type: Int, val mutable: Boolean) : WasmImportDesc
 
 class WasmLimits(val min: Int, val max: Int)
 
-class WasmGlobal(val type: WasmFieldType, val init: WasmExpr)
+class WasmGlobalDef(val type: WasmFieldType, val init: WasmExpr)
 
-class WasmModuleElement(val type: Int, val init: Array<out WasmExpr>, val mode: WasmModuleInitMode)
+class WasmElementDef(val type: Int, val init: Array<out WasmExpr>, val mode: WasmModuleInitMode)
 sealed class WasmModuleInitMode {
     data object Passive : WasmModuleInitMode()
     data class Active(val idx: Int, val offset: WasmExpr) : WasmModuleInitMode()

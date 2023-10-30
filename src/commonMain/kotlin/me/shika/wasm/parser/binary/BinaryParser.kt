@@ -1,47 +1,30 @@
 package me.shika.wasm.parser.binary
 
-import me.shika.wasm.WasmExport
-import me.shika.wasm.WasmExportDesc
-import me.shika.wasm.WasmExpr
-import me.shika.wasm.WasmFuncBody
-import me.shika.wasm.WasmFuncIdx
-import me.shika.wasm.WasmFieldType
-import me.shika.wasm.WasmMemType
-import me.shika.wasm.WasmTableType
-import me.shika.wasm.WasmGlobal
-import me.shika.wasm.WasmGlobalIdx
-import me.shika.wasm.WasmImport
-import me.shika.wasm.WasmImportDesc
-import me.shika.wasm.WasmLimits
-import me.shika.wasm.WasmFuncLocal
-import me.shika.wasm.WasmMemIdx
-import me.shika.wasm.WasmModuleData
-import me.shika.wasm.WasmModuleElement
-import me.shika.wasm.WasmModuleInitMode
-import me.shika.wasm.WasmRecursiveType
-import me.shika.wasm.WasmTableIdx
-import me.shika.wasm.WasmTagIdx
-import me.shika.wasm.WasmType
-import me.shika.wasm.WasmValueType
-import me.shika.wasm.parser.binary.internal.BinaryExpressionParser
+import me.shika.wasm.def.WasmExport
+import me.shika.wasm.def.WasmExportDesc
+import me.shika.wasm.def.WasmExpr
+import me.shika.wasm.def.WasmFuncBody
+import me.shika.wasm.def.WasmFuncIdx
+import me.shika.wasm.def.WasmFieldType
+import me.shika.wasm.def.WasmMemoryDef
+import me.shika.wasm.def.WasmTableDef
+import me.shika.wasm.def.WasmGlobalDef
+import me.shika.wasm.def.WasmGlobalIdx
+import me.shika.wasm.def.WasmImport
+import me.shika.wasm.def.WasmImportDesc
+import me.shika.wasm.def.WasmLimits
+import me.shika.wasm.def.WasmFuncLocal
+import me.shika.wasm.def.WasmMemIdx
+import me.shika.wasm.def.WasmModuleData
+import me.shika.wasm.def.WasmModuleDef
+import me.shika.wasm.def.WasmElementDef
+import me.shika.wasm.def.WasmModuleInitMode
+import me.shika.wasm.def.WasmTableIdx
+import me.shika.wasm.def.WasmTagIdx
+import me.shika.wasm.def.WasmType
+import me.shika.wasm.def.WasmValueType
 import me.shika.wasm.parser.binary.internal.ByteBuffer
 import me.shika.wasm.parser.binary.internal.readU32
-
-class BinaryParserState {
-    var types: Array<WasmRecursiveType>? = null
-    var imports: Array<WasmImport>? = null
-    var funcIdx: IntArray? = null
-    var tables: Array<WasmTableType>? = null
-    var memory: Array<WasmMemType>? = null
-    var globals: Array<WasmGlobal>? = null
-    var exports: Array<WasmExport>? = null
-    var startFuncIdx: Int? = null
-    var elements: Array<WasmModuleElement>? = null
-    var dataCount: Int? = null
-    var code: Array<WasmFuncBody>? = null
-    var data: Array<WasmModuleData>? = null
-    var tags: IntArray? = null
-}
 
 private enum class SectionType(val byte: Byte) {
     Custom(0),
@@ -61,10 +44,10 @@ private enum class SectionType(val byte: Byte) {
 }
 
 @OptIn(ExperimentalStdlibApi::class)
-private class BinaryParser(private val state: BinaryParserState) {
+private class BinaryParser(private val state: WasmModuleDef) {
     private val expressionParser = BinaryExpressionParser(state)
 
-    fun parseBinary(buffer: ByteBuffer) {
+    fun parseAndValidateBinary(buffer: ByteBuffer) {
         val magic = buffer.readInt()
         require(magic == 0x6D736100) {
             "Expected magic to be 0x6D736100, but it was ${magic.toHexString()}"
@@ -80,7 +63,7 @@ private class BinaryParser(private val state: BinaryParserState) {
         }
     }
 
-    private fun BinaryParserState.parseNextSection(buffer: ByteBuffer) {
+    private fun WasmModuleDef.parseNextSection(buffer: ByteBuffer) {
         val sectionIdByte = buffer.readByte()
         val sectionType = SectionType.entries.firstOrNull { it.byte == sectionIdByte }
         require(sectionType != null) {
@@ -89,6 +72,7 @@ private class BinaryParser(private val state: BinaryParserState) {
         val sectionSize = buffer.readU32()
         val position = buffer.position
 
+        println("Parsing $sectionType")
         try {
             when (sectionType) {
                 SectionType.Custom -> {
@@ -111,10 +95,10 @@ private class BinaryParser(private val state: BinaryParserState) {
                 }
 
                 SectionType.Function -> {
-                    require(funcIdx == null) {
+                    require(funcTypeIdx == null) {
                         "Encountered repeated function section."
                     }
-                    funcIdx = buffer.parseFunctionSection()
+                    funcTypeIdx = buffer.parseFunctionSection()
                 }
 
                 SectionType.Table -> {
@@ -212,11 +196,13 @@ private class BinaryParser(private val state: BinaryParserState) {
             append("]")
         }
 
-    private fun ByteBuffer.parseTypeSection(): Array<WasmRecursiveType> {
-        val typeCount = readU32()
-        return Array(typeCount) {
-            with(expressionParser) { parseType() }
+    private fun ByteBuffer.parseTypeSection(): Array<WasmType> {
+        val types = mutableListOf<WasmType>()
+        repeat(readU32()) {
+            val type = with(expressionParser) { parseType() }
+            types.addAll(type)
         }
+        return types.toTypedArray()
     }
 
     private fun ByteBuffer.parseImportSection(): Array<WasmImport> {
@@ -234,17 +220,17 @@ private class BinaryParser(private val state: BinaryParserState) {
         return IntArray(funcCount) { readU32() }
     }
 
-    private fun ByteBuffer.parseTableSection(): Array<WasmTableType> {
+    private fun ByteBuffer.parseTableSection(): Array<WasmTableDef> {
         val tableCount = readU32()
-        return Array(tableCount) { parseTableType() }
+        return Array(tableCount) { parseTableDef() }
     }
 
-    private fun ByteBuffer.parseMemorySection(): Array<WasmMemType> {
+    private fun ByteBuffer.parseMemorySection(): Array<WasmMemoryDef> {
         val memCount = readU32()
         return Array(memCount) { parseMemType() }
     }
 
-    private fun ByteBuffer.parseGlobalSection(): Array<WasmGlobal> {
+    private fun ByteBuffer.parseGlobalSection(): Array<WasmGlobalDef> {
         val globalCount = readU32()
         return Array(globalCount) { parseGlobal() }
     }
@@ -262,7 +248,7 @@ private class BinaryParser(private val state: BinaryParserState) {
         return readU32()
     }
 
-    private fun ByteBuffer.parseElementsSection(): Array<WasmModuleElement> {
+    private fun ByteBuffer.parseElementsSection(): Array<WasmElementDef> {
         val elementCount = readU32()
         return Array(elementCount) {
             when (val elementType = readU32()) {
@@ -270,7 +256,7 @@ private class BinaryParser(private val state: BinaryParserState) {
                 //  (https://webassembly.github.io/spec/core/binary/modules.html#element-section)
                 0 -> {
                     val expr = parseConstantExpr()
-                    WasmModuleElement(
+                    WasmElementDef(
                         WasmValueType.FuncRef.toInt(),
                         parseFuncIdxIntoInitExpr(),
                         WasmModuleInitMode.Active(0, expr)
@@ -279,7 +265,7 @@ private class BinaryParser(private val state: BinaryParserState) {
 
                 1 -> {
                     val type = parseModuleElemKind()
-                    WasmModuleElement(
+                    WasmElementDef(
                         type.toInt(),
                         parseFuncIdxIntoInitExpr(),
                         WasmModuleInitMode.Passive
@@ -290,7 +276,7 @@ private class BinaryParser(private val state: BinaryParserState) {
                     val tableIdx = parseIdx()
                     val expr = parseConstantExpr()
                     val type = parseModuleElemKind()
-                    WasmModuleElement(
+                    WasmElementDef(
                         type.toInt(),
                         parseFuncIdxIntoInitExpr(),
                         WasmModuleInitMode.Active(tableIdx, expr)
@@ -299,7 +285,7 @@ private class BinaryParser(private val state: BinaryParserState) {
 
                 3 -> {
                     val type = parseModuleElemKind()
-                    WasmModuleElement(
+                    WasmElementDef(
                         type.toInt(),
                         parseFuncIdxIntoInitExpr(),
                         WasmModuleInitMode.Declarative
@@ -308,7 +294,7 @@ private class BinaryParser(private val state: BinaryParserState) {
 
                 4 -> {
                     val expr = parseConstantExpr()
-                    WasmModuleElement(
+                    WasmElementDef(
                         WasmValueType.FuncRef.toInt(),
                         parseFuncIdxIntoInitExpr(),
                         WasmModuleInitMode.Active(0, expr)
@@ -318,8 +304,8 @@ private class BinaryParser(private val state: BinaryParserState) {
                 5 -> {
                     val type = parseRefType()
                     val expr = Array(readU32()) { parseExpr() }
-                    WasmModuleElement(
-                        type.toInt(),
+                    WasmElementDef(
+                        type,
                         expr,
                         WasmModuleInitMode.Passive
                     )
@@ -330,8 +316,8 @@ private class BinaryParser(private val state: BinaryParserState) {
                     val modeExpr = parseConstantExpr()
                     val type = parseRefType()
                     val expr = Array(readU32()) { parseExpr() }
-                    WasmModuleElement(
-                        type.toInt(),
+                    WasmElementDef(
+                        type,
                         expr,
                         WasmModuleInitMode.Active(tableIdx, modeExpr)
                     )
@@ -340,8 +326,8 @@ private class BinaryParser(private val state: BinaryParserState) {
                 7 -> {
                     val type = parseRefType()
                     val expr = Array(readU32()) { parseExpr() }
-                    WasmModuleElement(
-                        type.toInt(),
+                    WasmElementDef(
+                        type,
                         expr,
                         WasmModuleInitMode.Declarative
                     )
@@ -395,17 +381,17 @@ private class BinaryParser(private val state: BinaryParserState) {
             readU32()
         }
 
-    private fun ByteBuffer.parseGlobal(): WasmGlobal {
+    private fun ByteBuffer.parseGlobal(): WasmGlobalDef {
         val globalType = parseFieldType()
         val expr = parseExpr()
-        return WasmGlobal(globalType, expr)
+        return WasmGlobalDef(globalType, expr)
     }
 
     private fun ByteBuffer.parseImportDesc(): WasmImportDesc {
         val byte = readByte()
         return when (byte.toInt()) {
             0x00 -> WasmFuncIdx(parseIdx())
-            0x01 -> parseTableType()
+            0x01 -> parseTableDef()
             0x02 -> parseMemType()
             0x03 -> parseFieldType()
             0x04 -> WasmTagIdx(parseIdx())
@@ -429,11 +415,43 @@ private class BinaryParser(private val state: BinaryParserState) {
         }
     }
 
-    private fun ByteBuffer.parseMemType(): WasmMemType =
-        WasmMemType(parseLimits())
+    private fun ByteBuffer.parseMemType(): WasmMemoryDef {
+        val limits = parseLimits()
+        return WasmMemoryDef(initSize = limits.min, maxSize = limits.max)
+    }
 
-    private fun ByteBuffer.parseTableType(): WasmTableType =
-        WasmTableType(parseRefType(), parseLimits())
+    private fun ByteBuffer.parseTableDef(): WasmTableDef {
+        val byte = peekByte().toInt()
+        when (byte) {
+            0x40 -> {
+                readByte().also {
+                    check(it == 0x40.toByte()) { "expected 0x40, got ${it.toHexString()}" }
+                }
+                readByte().also {
+                    check(it == 0x00.toByte()) { "expected 0x00, got ${it.toHexString()}" }
+                }
+                val type = parseRefType()
+                val limits = parseLimits()
+                val expr = parseExpr()
+                return WasmTableDef(
+                    type,
+                    limits.min,
+                    limits.max,
+                    expr
+                )
+            }
+            else -> {
+                val type = parseRefType()
+                val limits = parseLimits()
+                return WasmTableDef(
+                    type,
+                    limits.min,
+                    limits.max,
+                    WasmExpr(IntArray(0))
+                )
+            }
+        }
+    }
 
     private fun ByteBuffer.parseIdx(): Int =
         readU32()
@@ -505,11 +523,11 @@ private class BinaryParser(private val state: BinaryParserState) {
         ByteArray(readU32()) { readByte() }
 }
 
-fun parseBinary(buffer: ByteBuffer): BinaryParserState {
-    val state = BinaryParserState()
-    val parser = BinaryParser(state)
-    parser.parseBinary(buffer)
-    return state
+fun parseBinary(buffer: ByteBuffer): WasmModuleDef {
+    val def = WasmModuleDef()
+    val parser = BinaryParser(def)
+    parser.parseAndValidateBinary(buffer)
+    return def
 }
 
 

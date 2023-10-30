@@ -6,6 +6,7 @@ expect class ByteBuffer {
 
     fun offset(bytes: Int)
 
+    fun peekByte(): Byte
     fun readByte(): Byte
     fun readInt(): Int
     fun readString(length: Int): String

@@ -16,6 +16,7 @@ actual class ByteBuffer(private val buffer: java.nio.ByteBuffer) {
         buffer.position(buffer.position() + bytes)
     }
 
+    actual fun peekByte(): Byte = buffer.get(buffer.position())
     actual fun readByte(): Byte = buffer.get()
     actual fun readInt(): Int = buffer.getInt()
     actual fun readString(length: Int): String {
