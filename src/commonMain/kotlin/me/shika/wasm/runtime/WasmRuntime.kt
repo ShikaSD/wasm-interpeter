@@ -1,18 +1,29 @@
+@file:OptIn(ExperimentalStdlibApi::class)
+
 package me.shika.wasm.runtime
 
+import me.shika.wasm.def.MemPageSize
+import me.shika.wasm.def.WasmInstructions
 import me.shika.wasm.def.WasmCompositeType
-import me.shika.wasm.def.WasmExport
+import me.shika.wasm.def.WasmExportDesc
+import me.shika.wasm.def.WasmExpr
 import me.shika.wasm.def.WasmFieldType
 import me.shika.wasm.def.WasmFuncBody
 import me.shika.wasm.def.WasmFuncIdx
 import me.shika.wasm.def.WasmFuncType
-import me.shika.wasm.def.WasmGlobalDef
 import me.shika.wasm.def.WasmImport
+import me.shika.wasm.def.WasmInstructions.GlobalGet
+import me.shika.wasm.def.WasmInstructions.RefFunc
+import me.shika.wasm.def.WasmInstructions.RefNull
+import me.shika.wasm.def.WasmInstructions.f32_const
+import me.shika.wasm.def.WasmInstructions.f64_const
+import me.shika.wasm.def.WasmInstructions.i32_const
+import me.shika.wasm.def.WasmInstructions.i64_const
 import me.shika.wasm.def.WasmMemoryDef
 import me.shika.wasm.def.WasmModuleData
 import me.shika.wasm.def.WasmModuleDef
+import me.shika.wasm.def.WasmModuleInitMode
 import me.shika.wasm.def.WasmTableDef
-import me.shika.wasm.def.WasmTableIdx
 import me.shika.wasm.def.WasmTagIdx
 import me.shika.wasm.def.WasmType
 
@@ -23,6 +34,30 @@ class WasmEnvironment {
         WasmModule(this, moduleDef).also {
             modules[name] = it
         }
+
+    internal fun evaluateConstExpr(context: WasmModule, expr: WasmExpr): WasmRef {
+        val ref = WasmRef()
+        when (val instruction = expr.code[0]) {
+            i32_const,
+            i64_const,
+            f32_const,
+            f64_const -> {
+                ref.value = expr.code[1]
+            }
+            GlobalGet -> {
+                TODO("resolve imported global")
+            }
+            RefNull -> {
+                // do nothing, already null
+            }
+            RefFunc -> {
+                val funcIdx = expr.code[1]
+                ref.value = WasmFuncIdx(funcIdx)
+            }
+            else -> error("Unsupported instruction ${instruction.toHexString()}")
+        }
+        return ref
+    }
 }
 
 class WasmModule(
@@ -34,8 +69,9 @@ class WasmModule(
     val memory: Array<WasmMemory>
     val globals: Array<WasmGlobal>
     val elems: Array<WasmElement>
-    val data: Array<WasmModuleData>
+    val data: Array<WasmModuleData?>
     val tags: Array<WasmType>
+    val exports: Map<String, WasmExportDesc>
 
     init {
         val types = def.types ?: emptyArray()
@@ -86,7 +122,7 @@ class WasmModule(
             val memoryDef = memoryDefs[it]
             WasmMemory(
                 memoryDef.maxSize,
-                ByteArray(memoryDef.initSize)
+                ByteArray(memoryDef.initSize * MemPageSize)
             )
         }
 
@@ -96,8 +132,7 @@ class WasmModule(
             val globalDef = globalsDef[it]
             WasmGlobal(
                 globalDef.type,
-                // todo: init
-                WasmRef()
+                env.evaluateConstExpr(this, globalDef.init)
             )
         }
 
@@ -112,16 +147,29 @@ class WasmModule(
         }
 
         val dataDef = def.data ?: emptyArray()
-        dataDef.forEach {
-            // todo: init data in memory
+        data = Array(dataDef.size) {
+            val data = dataDef[it]
+            when (val mode = data.mode) {
+                is WasmModuleInitMode.Active -> {
+                    require(mode.idx == 0) { "Only memory index 0 is supported" }
+                    val offset = env.evaluateConstExpr(this, mode.offset).value as Int
+                    data.bytes.copyInto(memory[0].bytes, offset)
+                    null
+                }
+                WasmModuleInitMode.Declarative -> TODO("Declarative data init is not supported")
+                WasmModuleInitMode.Passive -> {
+                    data
+                }
+            }
         }
-        data = dataDef
-
         check(imports.none { it.desc is WasmTagIdx }) { "Tag import not supported" }
         val tagDef = def.tags ?: EmptyIntArray
         tags = Array(tagDef.size) {
             types[tagDef[it]]
         }
+
+        val exportsDef = def.exports ?: emptyArray()
+        exports = exportsDef.associate { it.name to it.desc }
     }
 
     companion object {
@@ -147,7 +195,7 @@ class WasmTable(
 )
 
 class WasmMemory(
-    val maxSize: Int,
+    val maxPages: Int,
     val bytes: ByteArray
 )
 
@@ -162,5 +210,5 @@ class WasmElement(
 )
 
 class WasmRef {
-// todo
+    var value: Any? = null
 }

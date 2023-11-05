@@ -106,3 +106,5 @@ sealed class WasmModuleInitMode {
 class WasmModuleData(val bytes: ByteArray, val mode: WasmModuleInitMode)
 
 class WasmExpr(val code: IntArray)
+
+internal const val MemPageSize = 65536

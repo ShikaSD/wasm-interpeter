@@ -1,5 +1,6 @@
 package me.shika.wasm.parser.binary
 
+import me.shika.wasm.def.MemPageSize
 import me.shika.wasm.def.WasmExport
 import me.shika.wasm.def.WasmExportDesc
 import me.shika.wasm.def.WasmExpr
@@ -26,26 +27,10 @@ import me.shika.wasm.def.WasmValueType
 import me.shika.wasm.parser.binary.internal.ByteBuffer
 import me.shika.wasm.parser.binary.internal.readU32
 
-private enum class SectionType(val byte: Byte) {
-    Custom(0),
-    Type(1),
-    Import(2),
-    Function(3),
-    Table(4),
-    Memory(5),
-    Global(6),
-    Export(7),
-    Start(8),
-    Element(9),
-    Code(10),
-    Data(11),
-    DataCount(12),
-    Tag(13),
-}
-
 @OptIn(ExperimentalStdlibApi::class)
 private class BinaryParser(private val state: WasmModuleDef) {
-    private val expressionParser = BinaryExpressionParser(state)
+    private val typeParser = BinaryTypeParser()
+    private val expressionParser = BinaryExpressionParser(typeParser)
 
     fun parseAndValidateBinary(buffer: ByteBuffer) {
         val magic = buffer.readInt()
@@ -199,7 +184,7 @@ private class BinaryParser(private val state: WasmModuleDef) {
     private fun ByteBuffer.parseTypeSection(): Array<WasmType> {
         val types = mutableListOf<WasmType>()
         repeat(readU32()) {
-            val type = with(expressionParser) { parseType() }
+            val type = with(typeParser) { parseType() }
             types.addAll(type)
         }
         return types.toTypedArray()
@@ -464,7 +449,7 @@ private class BinaryParser(private val state: WasmModuleDef) {
     private fun ByteBuffer.parseLimits(): WasmLimits {
         val byte = readByte()
         return when (byte.toInt()) {
-            0x00 -> WasmLimits(readU32(), Int.MAX_VALUE)
+            0x00 -> WasmLimits(readU32(), Int.MAX_VALUE / MemPageSize)
             0x01 -> WasmLimits(readU32(), readU32())
             else -> error {
                 "Unexpected limits type ${byte.toHexString()}"
@@ -494,13 +479,13 @@ private class BinaryParser(private val state: WasmModuleDef) {
         }
 
     private fun ByteBuffer.parseRefType(): Int =
-        with(expressionParser) { parseRefType() }
+        with(typeParser) { parseRefType() }
 
     private fun ByteBuffer.parseFieldType(): WasmFieldType =
-        with(expressionParser) { parseFieldType() }
+        with(typeParser) { parseFieldType() }
 
     private fun ByteBuffer.parseValueType(): Int =
-        with(expressionParser) { parseValueType() }
+        with(typeParser) { parseValueType() }
 
     private fun ByteBuffer.parseExpr(expectedSize: Int = Int.MAX_VALUE): WasmExpr =
         with(expressionParser) { parseExpression(const = false, expectedSize) }
@@ -521,6 +506,23 @@ private class BinaryParser(private val state: WasmModuleDef) {
 
     private fun ByteBuffer.readBytes(): ByteArray =
         ByteArray(readU32()) { readByte() }
+
+    private enum class SectionType(val byte: Byte) {
+        Custom(0),
+        Type(1),
+        Import(2),
+        Function(3),
+        Table(4),
+        Memory(5),
+        Global(6),
+        Export(7),
+        Start(8),
+        Element(9),
+        Code(10),
+        Data(11),
+        DataCount(12),
+        Tag(13),
+    }
 }
 
 fun parseBinary(buffer: ByteBuffer): WasmModuleDef {

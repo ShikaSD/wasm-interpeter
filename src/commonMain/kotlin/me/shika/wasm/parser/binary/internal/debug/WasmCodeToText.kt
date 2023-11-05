@@ -2,199 +2,201 @@ package me.shika.wasm.parser.binary.internal.debug
 
 import me.shika.wasm.def.WasmValueType
 import me.shika.wasm.parser.binary.BinaryExpressionParser
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Block
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Branch
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.BranchIf
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.BranchTable
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Call
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.CallIndirect
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.CallRef
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Catch
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.CatchAll
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Constf32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Constf64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Consti32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Consti64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Drop
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Else
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.End
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.FuncRef
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.GlobalGet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.GlobalSet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.If
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.IsNull
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.LocalGet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.LocalSet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.LocalTee
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Loop
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemGrow
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadf32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadf64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi32_16s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi32_16u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi32_8s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi32_8u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_16s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_16u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_32s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_32u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_8s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemLoadi64_8u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemSize
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStoref32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStoref64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei32_16
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei32_8
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei64_16
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei64_32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.MemStorei64_8
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.ModuleOp
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.NoOp
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.RefAsNonNull
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.RefEq
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.RefNull
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.RefOp
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Rethrow
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Return
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Select
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.SelectMany
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.TableGet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.TableSet
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Throw
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Try
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.Unreachable
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_abs
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_add
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_ceil
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_convert_i32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_convert_i32_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_convert_i64_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_convert_i64_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_copysign
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_demote_f64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_div
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_eq
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_floor
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_ge
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_gt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_le
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_lt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_max
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_min
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_mul
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_ne
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_nearest
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_neg
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_reinterpret_i32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_sqrt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_sub
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f32_trunc
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_abs
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_add
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_ceil
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_convert_i32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_convert_i32_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_convert_i64_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_convert_i64_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_copysign
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_div
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_eq
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_floor
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_ge
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_gt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_le
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_lt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_max
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_min
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_mul
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_ne
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_nearest
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_neg
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_promote_f32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_reinterpret_i64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_sqrt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_sub
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.f64_trunc
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_add
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_and
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_clz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_ctz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_div_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_div_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_eq
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_eqz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_extend16_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_extend8_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_ge_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_ge_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_gt_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_gt_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_le_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_le_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_lt_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_lt_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_mul
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_ne
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_or
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_popcnt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_reinterpret_f32
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_rem_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_rem_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_rotl
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_rotr
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_shl
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_shr_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_shr_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_sub
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_trunc_f32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_trunc_f32_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_trunc_f64_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_trunc_f64_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_wrap_i64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i32_xor
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_add
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_and
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_clz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_ctz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_div_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_div_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_eq
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_eqz
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_extend16_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_extend32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_extend8_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_extend_i32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_extend_i32_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_ge_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_ge_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_gt_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_gt_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_le_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_le_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_lt_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_lt_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_mul
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_ne
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_or
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_popcnt
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_reinterpret_f64
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_rem_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_rem_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_rotl
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_rotr
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_shl
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_shr_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_shr_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_sub
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_trunc_f32_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_trunc_f32_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_trunc_f64_s
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_trunc_f64_u
-import me.shika.wasm.parser.binary.BinaryExpressionParser.Companion.i64_xor
+import me.shika.wasm.def.WasmInstructions.Block
+import me.shika.wasm.def.WasmInstructions.Branch
+import me.shika.wasm.def.WasmInstructions.BranchIf
+import me.shika.wasm.def.WasmInstructions.BranchTable
+import me.shika.wasm.def.WasmInstructions.Call
+import me.shika.wasm.def.WasmInstructions.CallIndirect
+import me.shika.wasm.def.WasmInstructions.CallRef
+import me.shika.wasm.def.WasmInstructions.Catch
+import me.shika.wasm.def.WasmInstructions.CatchAll
+import me.shika.wasm.def.WasmInstructions.f32_const
+import me.shika.wasm.def.WasmInstructions.f64_const
+import me.shika.wasm.def.WasmInstructions.i32_const
+import me.shika.wasm.def.WasmInstructions.i64_const
+import me.shika.wasm.def.WasmInstructions.Drop
+import me.shika.wasm.def.WasmInstructions.Else
+import me.shika.wasm.def.WasmInstructions.End
+import me.shika.wasm.def.WasmInstructions.RefFunc
+import me.shika.wasm.def.WasmInstructions.GlobalGet
+import me.shika.wasm.def.WasmInstructions.GlobalSet
+import me.shika.wasm.def.WasmInstructions.If
+import me.shika.wasm.def.WasmInstructions.IsNull
+import me.shika.wasm.def.WasmInstructions.LocalGet
+import me.shika.wasm.def.WasmInstructions.LocalSet
+import me.shika.wasm.def.WasmInstructions.LocalTee
+import me.shika.wasm.def.WasmInstructions.Loop
+import me.shika.wasm.def.WasmInstructions.MemGrow
+import me.shika.wasm.def.WasmInstructions.MemLoadf32
+import me.shika.wasm.def.WasmInstructions.MemLoadf64
+import me.shika.wasm.def.WasmInstructions.MemLoadi32
+import me.shika.wasm.def.WasmInstructions.MemLoadi32_16s
+import me.shika.wasm.def.WasmInstructions.MemLoadi32_16u
+import me.shika.wasm.def.WasmInstructions.MemLoadi32_8s
+import me.shika.wasm.def.WasmInstructions.MemLoadi32_8u
+import me.shika.wasm.def.WasmInstructions.MemLoadi64
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_16s
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_16u
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_32s
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_32u
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_8s
+import me.shika.wasm.def.WasmInstructions.MemLoadi64_8u
+import me.shika.wasm.def.WasmInstructions.MemSize
+import me.shika.wasm.def.WasmInstructions.MemStoref32
+import me.shika.wasm.def.WasmInstructions.MemStoref64
+import me.shika.wasm.def.WasmInstructions.MemStorei32
+import me.shika.wasm.def.WasmInstructions.MemStorei32_16
+import me.shika.wasm.def.WasmInstructions.MemStorei32_8
+import me.shika.wasm.def.WasmInstructions.MemStorei64
+import me.shika.wasm.def.WasmInstructions.MemStorei64_16
+import me.shika.wasm.def.WasmInstructions.MemStorei64_32
+import me.shika.wasm.def.WasmInstructions.MemStorei64_8
+import me.shika.wasm.def.WasmInstructions.ModuleOp
+import me.shika.wasm.def.WasmInstructions.NoOp
+import me.shika.wasm.def.WasmInstructions.NumericEnd
+import me.shika.wasm.def.WasmInstructions.NumericStart
+import me.shika.wasm.def.WasmInstructions.RefAsNonNull
+import me.shika.wasm.def.WasmInstructions.RefEq
+import me.shika.wasm.def.WasmInstructions.RefNull
+import me.shika.wasm.def.WasmInstructions.RefOp
+import me.shika.wasm.def.WasmInstructions.Rethrow
+import me.shika.wasm.def.WasmInstructions.Return
+import me.shika.wasm.def.WasmInstructions.Select
+import me.shika.wasm.def.WasmInstructions.SelectMany
+import me.shika.wasm.def.WasmInstructions.TableGet
+import me.shika.wasm.def.WasmInstructions.TableSet
+import me.shika.wasm.def.WasmInstructions.Throw
+import me.shika.wasm.def.WasmInstructions.Try
+import me.shika.wasm.def.WasmInstructions.Unreachable
+import me.shika.wasm.def.WasmInstructions.f32_abs
+import me.shika.wasm.def.WasmInstructions.f32_add
+import me.shika.wasm.def.WasmInstructions.f32_ceil
+import me.shika.wasm.def.WasmInstructions.f32_convert_i32_s
+import me.shika.wasm.def.WasmInstructions.f32_convert_i32_u
+import me.shika.wasm.def.WasmInstructions.f32_convert_i64_s
+import me.shika.wasm.def.WasmInstructions.f32_convert_i64_u
+import me.shika.wasm.def.WasmInstructions.f32_copysign
+import me.shika.wasm.def.WasmInstructions.f32_demote_f64
+import me.shika.wasm.def.WasmInstructions.f32_div
+import me.shika.wasm.def.WasmInstructions.f32_eq
+import me.shika.wasm.def.WasmInstructions.f32_floor
+import me.shika.wasm.def.WasmInstructions.f32_ge
+import me.shika.wasm.def.WasmInstructions.f32_gt
+import me.shika.wasm.def.WasmInstructions.f32_le
+import me.shika.wasm.def.WasmInstructions.f32_lt
+import me.shika.wasm.def.WasmInstructions.f32_max
+import me.shika.wasm.def.WasmInstructions.f32_min
+import me.shika.wasm.def.WasmInstructions.f32_mul
+import me.shika.wasm.def.WasmInstructions.f32_ne
+import me.shika.wasm.def.WasmInstructions.f32_nearest
+import me.shika.wasm.def.WasmInstructions.f32_neg
+import me.shika.wasm.def.WasmInstructions.f32_reinterpret_i32
+import me.shika.wasm.def.WasmInstructions.f32_sqrt
+import me.shika.wasm.def.WasmInstructions.f32_sub
+import me.shika.wasm.def.WasmInstructions.f32_trunc
+import me.shika.wasm.def.WasmInstructions.f64_abs
+import me.shika.wasm.def.WasmInstructions.f64_add
+import me.shika.wasm.def.WasmInstructions.f64_ceil
+import me.shika.wasm.def.WasmInstructions.f64_convert_i32_s
+import me.shika.wasm.def.WasmInstructions.f64_convert_i32_u
+import me.shika.wasm.def.WasmInstructions.f64_convert_i64_s
+import me.shika.wasm.def.WasmInstructions.f64_convert_i64_u
+import me.shika.wasm.def.WasmInstructions.f64_copysign
+import me.shika.wasm.def.WasmInstructions.f64_div
+import me.shika.wasm.def.WasmInstructions.f64_eq
+import me.shika.wasm.def.WasmInstructions.f64_floor
+import me.shika.wasm.def.WasmInstructions.f64_ge
+import me.shika.wasm.def.WasmInstructions.f64_gt
+import me.shika.wasm.def.WasmInstructions.f64_le
+import me.shika.wasm.def.WasmInstructions.f64_lt
+import me.shika.wasm.def.WasmInstructions.f64_max
+import me.shika.wasm.def.WasmInstructions.f64_min
+import me.shika.wasm.def.WasmInstructions.f64_mul
+import me.shika.wasm.def.WasmInstructions.f64_ne
+import me.shika.wasm.def.WasmInstructions.f64_nearest
+import me.shika.wasm.def.WasmInstructions.f64_neg
+import me.shika.wasm.def.WasmInstructions.f64_promote_f32
+import me.shika.wasm.def.WasmInstructions.f64_reinterpret_i64
+import me.shika.wasm.def.WasmInstructions.f64_sqrt
+import me.shika.wasm.def.WasmInstructions.f64_sub
+import me.shika.wasm.def.WasmInstructions.f64_trunc
+import me.shika.wasm.def.WasmInstructions.i32_add
+import me.shika.wasm.def.WasmInstructions.i32_and
+import me.shika.wasm.def.WasmInstructions.i32_clz
+import me.shika.wasm.def.WasmInstructions.i32_ctz
+import me.shika.wasm.def.WasmInstructions.i32_div_s
+import me.shika.wasm.def.WasmInstructions.i32_div_u
+import me.shika.wasm.def.WasmInstructions.i32_eq
+import me.shika.wasm.def.WasmInstructions.i32_eqz
+import me.shika.wasm.def.WasmInstructions.i32_extend16_s
+import me.shika.wasm.def.WasmInstructions.i32_extend8_s
+import me.shika.wasm.def.WasmInstructions.i32_ge_s
+import me.shika.wasm.def.WasmInstructions.i32_ge_u
+import me.shika.wasm.def.WasmInstructions.i32_gt_s
+import me.shika.wasm.def.WasmInstructions.i32_gt_u
+import me.shika.wasm.def.WasmInstructions.i32_le_s
+import me.shika.wasm.def.WasmInstructions.i32_le_u
+import me.shika.wasm.def.WasmInstructions.i32_lt_s
+import me.shika.wasm.def.WasmInstructions.i32_lt_u
+import me.shika.wasm.def.WasmInstructions.i32_mul
+import me.shika.wasm.def.WasmInstructions.i32_ne
+import me.shika.wasm.def.WasmInstructions.i32_or
+import me.shika.wasm.def.WasmInstructions.i32_popcnt
+import me.shika.wasm.def.WasmInstructions.i32_reinterpret_f32
+import me.shika.wasm.def.WasmInstructions.i32_rem_s
+import me.shika.wasm.def.WasmInstructions.i32_rem_u
+import me.shika.wasm.def.WasmInstructions.i32_rotl
+import me.shika.wasm.def.WasmInstructions.i32_rotr
+import me.shika.wasm.def.WasmInstructions.i32_shl
+import me.shika.wasm.def.WasmInstructions.i32_shr_s
+import me.shika.wasm.def.WasmInstructions.i32_shr_u
+import me.shika.wasm.def.WasmInstructions.i32_sub
+import me.shika.wasm.def.WasmInstructions.i32_trunc_f32_s
+import me.shika.wasm.def.WasmInstructions.i32_trunc_f32_u
+import me.shika.wasm.def.WasmInstructions.i32_trunc_f64_s
+import me.shika.wasm.def.WasmInstructions.i32_trunc_f64_u
+import me.shika.wasm.def.WasmInstructions.i32_wrap_i64
+import me.shika.wasm.def.WasmInstructions.i32_xor
+import me.shika.wasm.def.WasmInstructions.i64_add
+import me.shika.wasm.def.WasmInstructions.i64_and
+import me.shika.wasm.def.WasmInstructions.i64_clz
+import me.shika.wasm.def.WasmInstructions.i64_ctz
+import me.shika.wasm.def.WasmInstructions.i64_div_s
+import me.shika.wasm.def.WasmInstructions.i64_div_u
+import me.shika.wasm.def.WasmInstructions.i64_eq
+import me.shika.wasm.def.WasmInstructions.i64_eqz
+import me.shika.wasm.def.WasmInstructions.i64_extend16_s
+import me.shika.wasm.def.WasmInstructions.i64_extend32_s
+import me.shika.wasm.def.WasmInstructions.i64_extend8_s
+import me.shika.wasm.def.WasmInstructions.i64_extend_i32_s
+import me.shika.wasm.def.WasmInstructions.i64_extend_i32_u
+import me.shika.wasm.def.WasmInstructions.i64_ge_s
+import me.shika.wasm.def.WasmInstructions.i64_ge_u
+import me.shika.wasm.def.WasmInstructions.i64_gt_s
+import me.shika.wasm.def.WasmInstructions.i64_gt_u
+import me.shika.wasm.def.WasmInstructions.i64_le_s
+import me.shika.wasm.def.WasmInstructions.i64_le_u
+import me.shika.wasm.def.WasmInstructions.i64_lt_s
+import me.shika.wasm.def.WasmInstructions.i64_lt_u
+import me.shika.wasm.def.WasmInstructions.i64_mul
+import me.shika.wasm.def.WasmInstructions.i64_ne
+import me.shika.wasm.def.WasmInstructions.i64_or
+import me.shika.wasm.def.WasmInstructions.i64_popcnt
+import me.shika.wasm.def.WasmInstructions.i64_reinterpret_f64
+import me.shika.wasm.def.WasmInstructions.i64_rem_s
+import me.shika.wasm.def.WasmInstructions.i64_rem_u
+import me.shika.wasm.def.WasmInstructions.i64_rotl
+import me.shika.wasm.def.WasmInstructions.i64_rotr
+import me.shika.wasm.def.WasmInstructions.i64_shl
+import me.shika.wasm.def.WasmInstructions.i64_shr_s
+import me.shika.wasm.def.WasmInstructions.i64_shr_u
+import me.shika.wasm.def.WasmInstructions.i64_sub
+import me.shika.wasm.def.WasmInstructions.i64_trunc_f32_s
+import me.shika.wasm.def.WasmInstructions.i64_trunc_f32_u
+import me.shika.wasm.def.WasmInstructions.i64_trunc_f64_s
+import me.shika.wasm.def.WasmInstructions.i64_trunc_f64_u
+import me.shika.wasm.def.WasmInstructions.i64_xor
 
 @OptIn(ExperimentalStdlibApi::class)
 fun IntArray.asWasmText(length: Int = this.size): String {
@@ -336,7 +338,7 @@ fun IntArray.asWasmText(length: Int = this.size): String {
                     appendIndentedLine("is_null")
                 }
 
-                FuncRef -> {
+                RefFunc -> {
                     appendIndented("func_ref ")
                     append(instructions[position++])
                     appendLine()
@@ -558,26 +560,26 @@ fun IntArray.asWasmText(length: Int = this.size): String {
                     }
                 }
 
-                Consti32 -> {
+                i32_const -> {
                     appendIndented("const.i32 ")
                     append(instructions[position++])
                     appendLine()
                 }
 
-                Consti64 -> {
+                i64_const -> {
                     appendIndented("const.i64 ")
                     val bits = instructions[position++].toLong() or (instructions[position++].toLong() shl 32)
                     append(bits)
                     appendLine()
                 }
 
-                Constf32 -> {
+                f32_const -> {
                     appendIndented("const.f32 ")
                     append(Float.fromBits(instructions[position++]))
                     appendLine()
                 }
 
-                Constf64 -> {
+                f64_const -> {
                     appendIndented("const.f64 ")
                     val bits = instructions[position++].toLong() or (instructions[position++].toLong() shl 32)
                     append(Double.fromBits(bits))
@@ -592,7 +594,7 @@ fun IntArray.asWasmText(length: Int = this.size): String {
                 }
 
                 else -> {
-                    if (op in BinaryExpressionParser.NumericStart..BinaryExpressionParser.NumericEnd) {
+                    if (op in NumericStart..NumericEnd) {
                         appendIndentedLine(op.asNumOp())
                     } else {
                         error("Unknown expr op byte: ${op.toHexString()}")
