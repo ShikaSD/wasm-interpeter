@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
 plugins {
     kotlin("multiplatform")
@@ -9,6 +10,10 @@ kotlin {
     wasmJs {
         binaries.executable()
         d8()
-        applyBinaryen()
+//        applyBinaryen()
     }
+}
+
+tasks.withType<KotlinCompilationTask<*>>().configureEach {
+    compilerOptions.freeCompilerArgs.add("-Xwasm-generate-wat=true")
 }

@@ -57,7 +57,6 @@ private class BinaryParser(private val state: WasmModuleDef) {
         val sectionSize = buffer.readU32()
         val position = buffer.position
 
-        println("Parsing $sectionType")
         try {
             when (sectionType) {
                 SectionType.Custom -> {
@@ -473,10 +472,18 @@ private class BinaryParser(private val state: WasmModuleDef) {
         }
     }
 
-    private fun ByteBuffer.parseLocals(): Array<WasmFuncLocal> =
-        Array(readU32()) {
-            WasmFuncLocal(readU32(), parseValueType())
+    private fun ByteBuffer.parseLocals(): IntArray {
+        val localCount = readU32()
+        val list = mutableListOf<Int>()
+        repeat(localCount) {
+            val count = readU32()
+            val type = parseValueType()
+            repeat(count) {
+                list.add(type)
+            }
         }
+        return list.toIntArray()
+    }
 
     private fun ByteBuffer.parseRefType(): Int =
         with(typeParser) { parseRefType() }

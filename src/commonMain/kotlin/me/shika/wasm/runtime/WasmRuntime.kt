@@ -1,69 +1,209 @@
-@file:OptIn(ExperimentalStdlibApi::class)
-
 package me.shika.wasm.runtime
 
 import me.shika.wasm.def.MemPageSize
-import me.shika.wasm.def.WasmInstructions
-import me.shika.wasm.def.WasmCompositeType
 import me.shika.wasm.def.WasmExportDesc
-import me.shika.wasm.def.WasmExpr
 import me.shika.wasm.def.WasmFieldType
 import me.shika.wasm.def.WasmFuncBody
 import me.shika.wasm.def.WasmFuncIdx
 import me.shika.wasm.def.WasmFuncType
 import me.shika.wasm.def.WasmImport
-import me.shika.wasm.def.WasmInstructions.GlobalGet
-import me.shika.wasm.def.WasmInstructions.RefFunc
-import me.shika.wasm.def.WasmInstructions.RefNull
-import me.shika.wasm.def.WasmInstructions.f32_const
-import me.shika.wasm.def.WasmInstructions.f64_const
-import me.shika.wasm.def.WasmInstructions.i32_const
-import me.shika.wasm.def.WasmInstructions.i64_const
 import me.shika.wasm.def.WasmMemoryDef
 import me.shika.wasm.def.WasmModuleData
 import me.shika.wasm.def.WasmModuleDef
 import me.shika.wasm.def.WasmModuleInitMode
+import me.shika.wasm.def.WasmStructType
 import me.shika.wasm.def.WasmTableDef
 import me.shika.wasm.def.WasmTagIdx
 import me.shika.wasm.def.WasmType
+import me.shika.wasm.def.WasmValueType
+import me.shika.wasm.intrinsics.createString
 
-class WasmEnvironment {
+sealed interface WasmControl {
+    data class Frame(
+        val arity: Int,
+        val locals: Array<Any?>,
+        val stackPtr: Int
+    ) : WasmControl
+
+    data class Label(
+        val arity: Int,
+        val stackPtr: Int,
+        val end: Int
+    ) : WasmControl
+}
+
+class WasmRuntimeStack {
+    private val stack: Array<Any?> = arrayOfNulls<Any?>(MAX_STACK_SIZE)
+    private val controls: ArrayDeque<WasmControl> = ArrayDeque()
+
+    private var top = 0
+    private var frameIdx = -1
+
+    fun push(ref: Any?) {
+        stack[top++] = ref
+    }
+
+    fun pop(): Any? {
+        require(top > 0) {
+            "Stack is empty"
+        }
+        return stack[--top].also {
+            stack[top] = null
+        }
+    }
+
+    fun peek(): Any? {
+        return stack[top - 1]
+    }
+
+    fun pushFrame(arity: Int, locals: Array<Any?>) {
+        controls.addLast(
+            WasmControl.Frame(arity = arity, locals = locals, stackPtr = top)
+        )
+        frameIdx = controls.size - 1
+    }
+
+    fun currentFrame(): WasmControl.Frame =
+        controls[frameIdx] as WasmControl.Frame
+
+    fun popFrame() {
+        var frame = controls.removeLast()
+        while (frame !is WasmControl.Frame) {
+            frame = controls.removeLast()
+        }
+        updateStack(frame.stackPtr, frame.arity)
+        frameIdx = controls.indexOfLast { it is WasmControl.Frame }
+    }
+
+    fun pushLabel(input: Int, output: Int, end: Int) {
+        top -= input
+        if (input > 0) {
+            stack.fill(null, top, top + input)
+        }
+        val label = WasmControl.Label(
+            arity = output,
+            stackPtr = top,
+            end = end
+        )
+        controls.addLast(label)
+//        println("pushing $label")
+    }
+
+    fun popLabel(labelIndex: Int): WasmControl.Label {
+        var count = labelIndex
+        var label = controls.removeLast()
+        while (label is WasmControl.Label && count-- > 0) {
+            label = controls.removeLast()
+        }
+        require(label is WasmControl.Label) {
+            "Label with index $labelIndex not found"
+        }
+        updateStack(label.stackPtr, label.arity)
+//        println("popping $label")
+        return label
+    }
+
+    private fun updateStack(stackPtr: Int, arity: Int) {
+        val oldTop = top
+        top = stackPtr + arity
+        if (top < oldTop) {
+            stack.copyInto(
+                destination = stack,
+                destinationOffset = stackPtr + 1,
+                startIndex = oldTop - arity,
+                endIndex = oldTop
+            )
+            stack.fill(null, top, oldTop)
+        }
+    }
+
+    fun print(): String = buildString {
+        appendLine("Stack: ")
+        for (i in top - 1 downTo 0) {
+            append(stack[i])
+            appendLine()
+        }
+    }
+
+    companion object {
+        private const val MAX_STACK_SIZE = 512
+    }
+}
+
+class WasmRuntime {
     val modules: MutableMap<String, WasmModule> = mutableMapOf()
+    val stack = WasmRuntimeStack()
+    val executor = WasmExecutor(this)
 
     fun instantiate(name: String, moduleDef: WasmModuleDef): WasmModule =
         WasmModule(this, moduleDef).also {
             modules[name] = it
         }
 
-    internal fun evaluateConstExpr(context: WasmModule, expr: WasmExpr): WasmRef {
-        val ref = WasmRef()
-        when (val instruction = expr.code[0]) {
-            i32_const,
-            i64_const,
-            f32_const,
-            f64_const -> {
-                ref.value = expr.code[1]
-            }
-            GlobalGet -> {
-                TODO("resolve imported global")
-            }
-            RefNull -> {
-                // do nothing, already null
-            }
-            RefFunc -> {
-                val funcIdx = expr.code[1]
-                ref.value = WasmFuncIdx(funcIdx)
-            }
-            else -> error("Unsupported instruction ${instruction.toHexString()}")
+    fun run(module: WasmModule, funcName: String, vararg args: Any?): Any? {
+        val funcIdx = module.exports[funcName]
+        if (funcIdx !is WasmFuncIdx) {
+            error("Function $funcName is not exported")
         }
-        return ref
+        try {
+            return when (val function = module.functions[funcIdx.idx]) {
+                is WasmLocalFunction -> {
+                    args.forEach {
+                        // todo: check host types against function type
+                        stack.push(it)
+                    }
+                    executor.execute(module, function)
+                    if (function.type.returns.isNotEmpty()) {
+                        stack.pop()
+                    } else {
+                        Unit
+                    }
+                }
+
+                is WasmExternalFunction -> TODO("external function call")
+            }
+        } catch (e: Exception) {
+            println(stack.print())
+            throw e
+        }
+    }
+
+    internal fun runInternal(module: WasmModule, function: WasmFunction) {
+        when (function) {
+            is WasmLocalFunction -> executor.execute(module, function)
+            is WasmExternalFunction -> when (val moduleName = function.declaration.moduleName) {
+                "js_code" -> {
+                    when (val name = function.declaration.name) {
+                        "kotlin.wasm.internal.importStringFromWasm" -> {
+                            val memory = module.memory[0]
+                            val prefix = stack.pop() as? String
+                            val length = stack.pop() as Int
+                            val offset = stack.pop() as Int
+                            val string = createString(memory.bytes, offset, length)
+                            stack.push(if (prefix == null) string else prefix + string)
+                        }
+                        "kotlin.wasm.internal.isNullish" -> {
+                            val value = stack.pop()
+                            stack.push((value == null).toInt())
+                        }
+                        "kotlin.io.printlnImpl" -> {
+                            val value = stack.pop()
+                            println(value)
+                        }
+                        else -> error("Unknown function $name")
+                    }
+                }
+                else -> error("External module calls are supported only for intrinsics (called $moduleName)")
+            }
+        }
     }
 }
 
 class WasmModule(
-    env: WasmEnvironment,
+    env: WasmRuntime,
     def: WasmModuleDef
 ) {
+    val types: Array<WasmType>
     val functions: Array<WasmFunction>
     val tables: Array<WasmTable>
     val memory: Array<WasmMemory>
@@ -74,7 +214,7 @@ class WasmModule(
     val exports: Map<String, WasmExportDesc>
 
     init {
-        val types = def.types ?: emptyArray()
+        types = def.types ?: emptyArray()
         val funcTypeIdx = def.funcTypeIdx ?: EmptyIntArray
         val funcBodies = def.code ?: emptyArray()
         val imports = def.imports ?: emptyArray()
@@ -87,7 +227,7 @@ class WasmModule(
         imports.forEach {
             if (it.desc is WasmFuncIdx) {
                 functions[funcIdx++] = WasmExternalFunction(
-                    types[it.desc.typeIdx].compType as WasmFuncType,
+                    types[it.desc.idx].compType as WasmFuncType,
                     it
                 )
             }
@@ -104,15 +244,12 @@ class WasmModule(
         check(imports.none { it.desc is WasmTableDef }) { "Tables import not supported" }
         val tablesDef = def.tables ?: emptyArray()
         tables = Array(tablesDef.size) {
-            val def = tablesDef[it]
-            val type = types[def.refType].compType
+            val tableDef = tablesDef[it]
+            val type = tableDef.refType
             WasmTable(
                 type,
-                def.maxSize,
-                Array(def.initSize) {
-                    // todo: init
-                    WasmRef()
-                }
+                tableDef.maxSize,
+                arrayOfNulls(tableDef.initSize)
             )
         }
 
@@ -131,8 +268,9 @@ class WasmModule(
         globals = Array(globalsDef.size) {
             val globalDef = globalsDef[it]
             WasmGlobal(
-                globalDef.type,
-                env.evaluateConstExpr(this, globalDef.init)
+                globalDef.type.mutable,
+                globalDef.type.type,
+                env.executor.evaluateConstExpr(this, globalDef.type.type, globalDef.init)
             )
         }
 
@@ -141,8 +279,8 @@ class WasmModule(
             val elemDef = elemsDef[it]
             WasmElement(
                 elemDef.type,
-                // todo: init
-                WasmRef()
+                TODO("element init is not implemented")
+                //WasmRef(elemDef.type)
             )
         }
 
@@ -152,7 +290,11 @@ class WasmModule(
             when (val mode = data.mode) {
                 is WasmModuleInitMode.Active -> {
                     require(mode.idx == 0) { "Only memory index 0 is supported" }
-                    val offset = env.evaluateConstExpr(this, mode.offset).value as Int
+                    val offset = env.executor.evaluateConstExpr(
+                        this,
+                        WasmValueType.i32.toInt(),
+                        mode.offset
+                    ) as Int
                     data.bytes.copyInto(memory[0].bytes, offset)
                     null
                 }
@@ -189,26 +331,36 @@ class WasmExternalFunction(
 ) : WasmFunction
 
 class WasmTable(
-    val type: WasmCompositeType,
+    val type: Int,
     val maxSize: Int,
-    val refs: Array<WasmRef>
+    val refs: Array<Any?>
 )
 
 class WasmMemory(
     val maxPages: Int,
     val bytes: ByteArray
-)
+) {
+    fun storeInt16(offset: Int, value: Short) {
+        require(offset + 2 <= bytes.size) { "Memory access out of bounds" }
+        bytes[offset] = value.toByte()
+        bytes[offset + 1] = (value.toInt() shr 8).toByte()
+    }
+}
 
 class WasmGlobal(
-    val type: WasmFieldType,
-    val value: WasmRef
+    val mutable: Boolean,
+    val type: Int,
+    var value: Any?
 )
 
 class WasmElement(
     val type: Int,
-    val ref: WasmRef
+    val value: Any
 )
 
-class WasmRef {
-    var value: Any? = null
+class WasmStruct(
+    val type: WasmStructType,
+    val fields: Array<Any?>
+) {
+    fun cast(type: WasmStructType): WasmStruct = WasmStruct(type, fields)
 }

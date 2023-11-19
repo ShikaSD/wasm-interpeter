@@ -37,7 +37,7 @@ class WasmFuncLocal(
 )
 
 class WasmFuncBody(
-    val locals: Array<WasmFuncLocal>,
+    val locals: IntArray,
     val body: WasmExpr
 )
 
@@ -76,6 +76,10 @@ enum class WasmValueType {
     Empty;
 
     fun toInt(): Int = -ordinal
+
+    companion object {
+        fun toValueType(type: Int): WasmValueType = WasmValueType.entries[-type]
+    }
 }
 
 class WasmImport(val moduleName: String, val name: String, val desc: WasmImportDesc)
@@ -83,7 +87,7 @@ class WasmExport(val name: String, val desc: WasmExportDesc)
 
 sealed interface WasmImportDesc
 sealed interface WasmExportDesc
-class WasmFuncIdx(val typeIdx: Int) : WasmImportDesc, WasmExportDesc
+class WasmFuncIdx(val idx: Int) : WasmImportDesc, WasmExportDesc
 class WasmTagIdx(val typeIdx: Int) : WasmImportDesc, WasmExportDesc
 class WasmTableIdx(val typeIdx: Int) : WasmExportDesc
 class WasmMemIdx(val typeIdx: Int) : WasmExportDesc

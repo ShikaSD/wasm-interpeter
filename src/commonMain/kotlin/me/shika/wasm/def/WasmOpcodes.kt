@@ -1,21 +1,20 @@
+@file:Suppress("ConstPropertyName")
+
 package me.shika.wasm.def
 
-@Suppress("ConstPropertyName")
-internal object WasmInstructions {
-    // https://webassembly.github.io/spec/core/binary/instructions.html#instructions
-
+object WasmOpcodes {
     // Control
     const val Unreachable = 0x00
     const val NoOp = 0x01
     const val Block = 0x02
     const val Loop = 0x03
-    const val If = 0x04
-    const val Else = 0x05
+    const val Jump = 0x04
+    const val If = 0x05
     const val Try = 0x06
     const val Catch = 0x07
     const val Throw = 0x08
     const val Rethrow = 0x09
-    const val CatchAll = 0x19
+    const val End = 0x0B
     const val Branch = 0x0C
     const val BranchIf = 0x0D
     const val BranchTable = 0x0E
@@ -24,7 +23,6 @@ internal object WasmInstructions {
     const val CallIndirect = 0x11
     const val CallRef = 0x14
     const val ReturnCallRef = 0x15
-    const val End = 0x0B
 
     // Ref
     const val RefNull = 0xD0
@@ -32,6 +30,40 @@ internal object WasmInstructions {
     const val RefFunc = 0xD2
     const val RefEq = 0xD3
     const val RefAsNonNull = 0xD4
+    const val StructNew = 0xD5
+    const val StructNewDefault = 0xD6
+    const val StructGet = 0xD7
+    const val StructSet = 0xD8
+    const val ArrayNew = 0xD9
+    const val ArrayNewDefault = 0xDA
+    const val ArrayNewFixed = 0xDB
+    const val ArrayNewData = 0xDC
+    const val ArrayNewElem = 0xDD
+    const val ArrayGet = 0xDE
+    const val ArraySet = 0xDF
+    const val ArrayLen = 0xE0
+    const val ArrayFill = 0xE1
+    const val ArrayCopy = 0xE2
+    const val ArrayInitData = 0xE3
+    const val ArrayInitElem = 0xE4
+    const val RefTest = 0xE5
+    const val RefCast = 0xE6
+    const val AnyConvert = 0xE7
+    const val ExternConvert = 0xE8
+
+    // Memory
+    const val MemInit = 0xC5
+    const val DataDrop = 0xC6
+    const val MemCopy = 0xC7
+    const val MemFill = 0xC8
+
+    // Table
+    const val TableInit = 0xC9
+    const val ElemDrop = 0xCA
+    const val TableCopy = 0xCB
+    const val TableGrow = 0xCC
+    const val TableSize = 0xCD
+    const val TableFill = 0xCE
 
     // Parametric
     const val Drop = 0x1A
@@ -48,10 +80,6 @@ internal object WasmInstructions {
     // Table
     const val TableGet = 0x25
     const val TableSet = 0x26
-
-    // One op for different instructions
-    const val RefOp = 0xFB
-    const val ModuleOp = 0xFC
 
     // Memory
     const val MemLoadi32 = 0x28
@@ -87,9 +115,6 @@ internal object WasmInstructions {
     const val f64_const = 0x44
 
     // Int range
-    const val NumericStart = 0x45
-    const val NumericEnd = 0xC4
-
     const val i32_eqz = 0x45
     const val i64_eqz = 0x50
     const val i32_clz = 0x67
@@ -220,4 +245,13 @@ internal object WasmInstructions {
     const val f64_min = 0xA4
     const val f64_max = 0xA5
     const val f64_copysign = 0xA6
+
+    const val i32_trunc_sat_f32_s = 0xF0
+    const val i32_trunc_sat_f32_u = 0xF1
+    const val i32_trunc_sat_f64_s = 0xF2
+    const val i32_trunc_sat_f64_u = 0xF3
+    const val i64_trunc_sat_f32_s = 0xF4
+    const val i64_trunc_sat_f32_u = 0xF5
+    const val i64_trunc_sat_f64_s = 0xF6
+    const val i64_trunc_sat_f64_u = 0xF7
 }

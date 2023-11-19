@@ -1,4 +1,4 @@
-package me.shika.wasm.parser.binary.internal.debug
+package me.shika.wasm.debug
 
 @OptIn(ExperimentalStdlibApi::class)
 fun Byte.debug(label: String): Byte {
