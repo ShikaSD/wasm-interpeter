@@ -8,7 +8,6 @@ import me.shika.wasm.def.WasmArrayType
 import me.shika.wasm.def.WasmExpr
 import me.shika.wasm.def.WasmFuncIdx
 import me.shika.wasm.def.WasmFuncType
-import me.shika.wasm.def.WasmOpcodes
 import me.shika.wasm.def.WasmOpcodes.ArrayGet
 import me.shika.wasm.def.WasmOpcodes.ArrayLen
 import me.shika.wasm.def.WasmOpcodes.ArrayNewData

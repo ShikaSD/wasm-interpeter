@@ -6,7 +6,6 @@ import me.shika.wasm.def.WasmOpcodes.ArrayLen
 import me.shika.wasm.def.WasmOpcodes.ArrayNewData
 import me.shika.wasm.def.WasmOpcodes.ArrayNewDefault
 import me.shika.wasm.def.WasmOpcodes.ArraySet
-import me.shika.wasm.def.WasmValueType
 import me.shika.wasm.def.WasmOpcodes.Block
 import me.shika.wasm.def.WasmOpcodes.Branch
 import me.shika.wasm.def.WasmOpcodes.BranchIf
@@ -15,14 +14,9 @@ import me.shika.wasm.def.WasmOpcodes.Call
 import me.shika.wasm.def.WasmOpcodes.CallIndirect
 import me.shika.wasm.def.WasmOpcodes.CallRef
 import me.shika.wasm.def.WasmOpcodes.Catch
-import me.shika.wasm.def.WasmOpcodes.f32_const
-import me.shika.wasm.def.WasmOpcodes.f64_const
-import me.shika.wasm.def.WasmOpcodes.i32_const
-import me.shika.wasm.def.WasmOpcodes.i64_const
 import me.shika.wasm.def.WasmOpcodes.Drop
 import me.shika.wasm.def.WasmOpcodes.End
 import me.shika.wasm.def.WasmOpcodes.ExternConvert
-import me.shika.wasm.def.WasmOpcodes.RefFunc
 import me.shika.wasm.def.WasmOpcodes.GlobalGet
 import me.shika.wasm.def.WasmOpcodes.GlobalSet
 import me.shika.wasm.def.WasmOpcodes.If
@@ -61,6 +55,7 @@ import me.shika.wasm.def.WasmOpcodes.NoOp
 import me.shika.wasm.def.WasmOpcodes.RefAsNonNull
 import me.shika.wasm.def.WasmOpcodes.RefCast
 import me.shika.wasm.def.WasmOpcodes.RefEq
+import me.shika.wasm.def.WasmOpcodes.RefFunc
 import me.shika.wasm.def.WasmOpcodes.RefNull
 import me.shika.wasm.def.WasmOpcodes.Rethrow
 import me.shika.wasm.def.WasmOpcodes.Return
@@ -77,6 +72,7 @@ import me.shika.wasm.def.WasmOpcodes.Unreachable
 import me.shika.wasm.def.WasmOpcodes.f32_abs
 import me.shika.wasm.def.WasmOpcodes.f32_add
 import me.shika.wasm.def.WasmOpcodes.f32_ceil
+import me.shika.wasm.def.WasmOpcodes.f32_const
 import me.shika.wasm.def.WasmOpcodes.f32_convert_i32_s
 import me.shika.wasm.def.WasmOpcodes.f32_convert_i32_u
 import me.shika.wasm.def.WasmOpcodes.f32_convert_i64_s
@@ -103,6 +99,7 @@ import me.shika.wasm.def.WasmOpcodes.f32_trunc
 import me.shika.wasm.def.WasmOpcodes.f64_abs
 import me.shika.wasm.def.WasmOpcodes.f64_add
 import me.shika.wasm.def.WasmOpcodes.f64_ceil
+import me.shika.wasm.def.WasmOpcodes.f64_const
 import me.shika.wasm.def.WasmOpcodes.f64_convert_i32_s
 import me.shika.wasm.def.WasmOpcodes.f64_convert_i32_u
 import me.shika.wasm.def.WasmOpcodes.f64_convert_i64_s
@@ -129,6 +126,7 @@ import me.shika.wasm.def.WasmOpcodes.f64_trunc
 import me.shika.wasm.def.WasmOpcodes.i32_add
 import me.shika.wasm.def.WasmOpcodes.i32_and
 import me.shika.wasm.def.WasmOpcodes.i32_clz
+import me.shika.wasm.def.WasmOpcodes.i32_const
 import me.shika.wasm.def.WasmOpcodes.i32_ctz
 import me.shika.wasm.def.WasmOpcodes.i32_div_s
 import me.shika.wasm.def.WasmOpcodes.i32_div_u
@@ -170,6 +168,7 @@ import me.shika.wasm.def.WasmOpcodes.i32_xor
 import me.shika.wasm.def.WasmOpcodes.i64_add
 import me.shika.wasm.def.WasmOpcodes.i64_and
 import me.shika.wasm.def.WasmOpcodes.i64_clz
+import me.shika.wasm.def.WasmOpcodes.i64_const
 import me.shika.wasm.def.WasmOpcodes.i64_ctz
 import me.shika.wasm.def.WasmOpcodes.i64_div_s
 import me.shika.wasm.def.WasmOpcodes.i64_div_u
@@ -210,6 +209,7 @@ import me.shika.wasm.def.WasmOpcodes.i64_trunc_sat_f32_u
 import me.shika.wasm.def.WasmOpcodes.i64_trunc_sat_f64_s
 import me.shika.wasm.def.WasmOpcodes.i64_trunc_sat_f64_u
 import me.shika.wasm.def.WasmOpcodes.i64_xor
+import me.shika.wasm.def.WasmValueType
 import me.shika.wasm.parser.binary.BinaryWasmOpcodes.NumericEnd
 import me.shika.wasm.parser.binary.BinaryWasmOpcodes.NumericStart
 
