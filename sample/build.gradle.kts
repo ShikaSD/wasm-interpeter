@@ -12,6 +12,18 @@ kotlin {
         d8()
 //        applyBinaryen()
     }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.2-wasm3")
+            }
+        }
+
+        val wasmJsMain by getting {
+
+        }
+    }
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {

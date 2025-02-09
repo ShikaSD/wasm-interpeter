@@ -5,6 +5,7 @@ import me.shika.wasm.def.WasmOpcodes.ArrayGet
 import me.shika.wasm.def.WasmOpcodes.ArrayLen
 import me.shika.wasm.def.WasmOpcodes.ArrayNewData
 import me.shika.wasm.def.WasmOpcodes.ArrayNewDefault
+import me.shika.wasm.def.WasmOpcodes.ArrayNewFixed
 import me.shika.wasm.def.WasmOpcodes.ArraySet
 import me.shika.wasm.def.WasmOpcodes.Block
 import me.shika.wasm.def.WasmOpcodes.Branch
@@ -57,6 +58,7 @@ import me.shika.wasm.def.WasmOpcodes.RefCast
 import me.shika.wasm.def.WasmOpcodes.RefEq
 import me.shika.wasm.def.WasmOpcodes.RefFunc
 import me.shika.wasm.def.WasmOpcodes.RefNull
+import me.shika.wasm.def.WasmOpcodes.RefTest
 import me.shika.wasm.def.WasmOpcodes.Rethrow
 import me.shika.wasm.def.WasmOpcodes.Return
 import me.shika.wasm.def.WasmOpcodes.Select
@@ -479,7 +481,14 @@ fun IntArray.dump(
                 }
                 ArrayNewData -> {
                     appendIndented("array.new_data ")
+                    append(instructions[position++].toTypeString())
+                    append(" ")
                     append(instructions[position++])
+                    appendLine()
+                }
+                ArrayNewFixed -> {
+                    appendIndented("array.new_fixed ")
+                    append(instructions[position++].toTypeString())
                     append(" ")
                     append(instructions[position++])
                     appendLine()
@@ -493,6 +502,14 @@ fun IntArray.dump(
                         append("not_null ")
                     }
                     append(instructions[position++])
+                    appendLine()
+                }
+                RefTest -> {
+                    appendIndented("ref.test ")
+                    if (instruction and 0xFF00 != 0) {
+                        append("not_null ")
+                    }
+                    append(instructions[position++].toTypeString())
                     appendLine()
                 }
 

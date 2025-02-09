@@ -12,10 +12,12 @@ import me.shika.wasm.def.WasmOpcodes.ArrayGet
 import me.shika.wasm.def.WasmOpcodes.ArrayLen
 import me.shika.wasm.def.WasmOpcodes.ArrayNewData
 import me.shika.wasm.def.WasmOpcodes.ArrayNewDefault
+import me.shika.wasm.def.WasmOpcodes.ArrayNewFixed
 import me.shika.wasm.def.WasmOpcodes.ArraySet
 import me.shika.wasm.def.WasmOpcodes.Block
 import me.shika.wasm.def.WasmOpcodes.Branch
 import me.shika.wasm.def.WasmOpcodes.BranchIf
+import me.shika.wasm.def.WasmOpcodes.BranchTable
 import me.shika.wasm.def.WasmOpcodes.Call
 import me.shika.wasm.def.WasmOpcodes.CallRef
 import me.shika.wasm.def.WasmOpcodes.Catch
@@ -35,6 +37,7 @@ import me.shika.wasm.def.WasmOpcodes.MemStorei32_16
 import me.shika.wasm.def.WasmOpcodes.RefCast
 import me.shika.wasm.def.WasmOpcodes.RefFunc
 import me.shika.wasm.def.WasmOpcodes.RefNull
+import me.shika.wasm.def.WasmOpcodes.RefTest
 import me.shika.wasm.def.WasmOpcodes.Return
 import me.shika.wasm.def.WasmOpcodes.Select
 import me.shika.wasm.def.WasmOpcodes.StructGet
@@ -60,6 +63,8 @@ import me.shika.wasm.def.WasmOpcodes.i32_shl
 import me.shika.wasm.def.WasmOpcodes.i32_sub
 import me.shika.wasm.def.WasmOpcodes.i32_xor
 import me.shika.wasm.def.WasmOpcodes.i64_const
+import me.shika.wasm.def.WasmOpcodes.i64_extend_i32_s
+import me.shika.wasm.def.WasmOpcodes.i64_le_s
 import me.shika.wasm.def.WasmStructType
 import me.shika.wasm.def.WasmValueType
 
@@ -239,6 +244,21 @@ class WasmExecutor(private val runtime: WasmRuntime) {
                         code[ip++].toLong() or (code[ip++].toLong() shl 32)
                     )
 
+                    i64_extend_i32_s -> {
+                        val value = stack.pop() as Int
+                        stack.push(
+                            value.toLong()
+                        )
+                    }
+
+                    i64_le_s -> {
+                        val right = stack.pop() as Long
+                        val left = stack.pop() as Long
+                        stack.push(
+                            (left <= right).toInt()
+                        )
+                    }
+
                     f32_const -> stack.push(
                         Float.fromBits(code[ip++])
                     )
@@ -327,6 +347,17 @@ class WasmExecutor(private val runtime: WasmRuntime) {
                         stack.push(ref)
                     }
 
+                    ArrayNewFixed -> {
+                        val typeIdx = code[ip++]
+                        val arrayType = module.types[typeIdx].compType as WasmArrayType
+                        val size = code[ip++]
+                        val ref = Array(size) {
+                            // todo: validate / fix types
+                            stack.pop()
+                        }
+                        stack.push(ref)
+                    }
+
                     ArrayLen -> {
                         val array = stack.pop() as Array<*>
                         stack.push(array.size)
@@ -409,6 +440,33 @@ class WasmExecutor(private val runtime: WasmRuntime) {
                                 }
                                 else -> error(
                                     "Only struct and array types are supported for ref.cast for now, got $type"
+                                )
+                            }
+                        }
+                    }
+
+                    RefTest -> {
+                        val nullsAllowed = instruction and 0xFF00 == 0
+                        val type = code[ip++].type(module)
+                        val value = stack.pop()
+                        if (value == null && nullsAllowed) {
+                            stack.push(1)
+                        } else {
+                            require(value != null) {
+                                "ref.test value must be non-null"
+                            }
+                            when (type) {
+                                is WasmArrayType -> {
+                                    // todo validate array type
+                                    stack.push(
+                                        (value is Array<*>).toInt()
+                                    )
+                                }
+                                is WasmStructType -> {
+                                    error("Structs are not supported for ref.test for now")
+                                }
+                                else -> error(
+                                    "Only struct and array types are supported for ref.test for now, got $type"
                                 )
                             }
                         }
@@ -507,6 +565,19 @@ class WasmExecutor(private val runtime: WasmRuntime) {
                             val label = stack.popLabel(labelIdx)
                             ip = label.end
                         }
+                    }
+
+                    BranchTable -> {
+                        val labelCount = code[ip++]
+                        val idx = stack.pop() as Int
+
+                        val labelIdx = if (idx < labelCount) {
+                            code[ip + idx]
+                        } else {
+                            code[ip + labelCount]
+                        }
+                        val label = stack.popLabel(labelIdx)
+                        ip = label.end
                     }
 
                     MemSize -> {
